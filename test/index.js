@@ -244,4 +244,42 @@ describe('GoodHttp', () => {
             stream.push(null);
         });
     });
+
+    it('ignores request errors if ignoreRequestErrors is true',  { plan: 1 }, (done) => {
+
+        let hitCount = 0;
+        const server = Http.createServer((req, res) => {
+
+            hitCount++;
+            req.socket.destroy();
+        });
+
+        server.listen(0, '127.0.0.1', () => {
+
+            const stream = internals.readStream();
+            const reporter = new GoodHttp(internals.getUri(server), {
+                threshold: 0,
+                ignoreRequestErrors: true
+            });
+
+            reporter.on('error', () => {
+
+                Code.fail('Request errors should not be reported');
+            });
+
+            reporter.on('finish', () => {
+
+                expect(hitCount).to.equal(1);
+                server.close(done);
+            });
+
+            stream.pipe(reporter);
+            stream.push({
+                event: 'log',
+                timestamp: Date.now(),
+                id: 1
+            });
+            stream.push(null);
+        });
+    });
 });

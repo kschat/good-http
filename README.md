@@ -18,7 +18,8 @@ Creates a new GoodHttp object where:
 
 - `endpoint` - full path to remote server to transmit logs.
 - `config` - configuration object
-	- `[threshold]` - number of events to hold before transmission. Defaults to `20`. Set to `0` to have every event start transmission instantly. It is strongly suggested to have a set threshold to make data transmission more efficient.
+  - `[threshold]` - number of events to hold before transmission. Defaults to `20`. Set to `0` to have every event start transmission instantly. It is strongly suggested to have a set threshold to make data transmission more efficient.
+  - `[ignoreRequestErrors]` - if set to `true` network errors (`ECONNRESET`, `ECONNREFUSED`, etc.) will not hault future log attempts. Defaults to `false`.
   - `[wreck]` - configuration object to pass into [`wreck`](https://github.com/hapijs/wreck#advanced). Defaults to `{ timeout: 60000, headers: {} }`. `content-type` is always "application/json".
 
 

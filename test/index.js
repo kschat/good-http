@@ -203,11 +203,9 @@ describe('GoodHttp', () => {
 
     it('makes a last attempt to send any remaining log entries on "finish"',  { plan: 2 }, (done) => {
 
-        let hitCount = 0;
         const server = Http.createServer((req, res) => {
 
             let data = '';
-            hitCount++;
 
             req.on('data', (chunk) => {
 

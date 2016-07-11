@@ -282,4 +282,50 @@ describe('GoodHttp', () => {
             stream.push(null);
         });
     });
+
+    it('doesn\'t clear data on error until errorThreshold is reached', { plan: 6 }, (done) => {
+
+        let hitCount = 0;
+        const server = Http.createServer((req, res) => {
+
+            let data = '';
+            hitCount++;
+
+            req.on('data', (chunk) => {
+
+                data += chunk;
+            });
+            req.on('end', () => {
+
+                const payload = JSON.parse(data);
+                const events = payload.events;
+
+                expect(events).to.have.length(hitCount);
+                expect(events[hitCount - 1].id).to.equal(hitCount - 1);
+                req.socket.destroy();
+            });
+        });
+
+        server.listen(0, '127.0.0.1', () => {
+
+            const stream = internals.readStream();
+            const reporter = new GoodHttp(internals.getUri(server), {
+                threshold: 0,
+                errorThreshold: 2
+            });
+
+            reporter.on('error', () => {
+
+                expect(hitCount).to.equal(2);
+                expect(reporter._data).to.have.length(0);
+                server.close(done);
+            });
+
+            stream.pipe(reporter);
+
+            for (let i = 0; i < 3; ++i) {
+                stream.push({ id: i });
+            }
+        });
+    });
 });

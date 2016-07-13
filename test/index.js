@@ -243,45 +243,7 @@ describe('GoodHttp', () => {
         });
     });
 
-    it('ignores request errors if ignoreRequestErrors is true',  { plan: 1 }, (done) => {
-
-        let hitCount = 0;
-        const server = Http.createServer((req, res) => {
-
-            hitCount++;
-            req.socket.destroy();
-        });
-
-        server.listen(0, '127.0.0.1', () => {
-
-            const stream = internals.readStream();
-            const reporter = new GoodHttp(internals.getUri(server), {
-                threshold: 0,
-                ignoreRequestErrors: true
-            });
-
-            reporter.on('error', () => {
-
-                Code.fail('Request errors should not be reported');
-            });
-
-            reporter.on('finish', () => {
-
-                expect(hitCount).to.equal(1);
-                server.close(done);
-            });
-
-            stream.pipe(reporter);
-            stream.push({
-                event: 'log',
-                timestamp: Date.now(),
-                id: 1
-            });
-            stream.push(null);
-        });
-    });
-
-    it('doesn\'t clear data on error until errorThreshold is reached', { plan: 6 }, (done) => {
+    it('doesn\'t clear data on error until errorThreshold is reached', { plan: 8 }, (done) => {
 
         let hitCount = 0;
         const server = Http.createServer((req, res) => {
@@ -314,7 +276,7 @@ describe('GoodHttp', () => {
 
             reporter.on('error', () => {
 
-                expect(hitCount).to.equal(2);
+                expect(hitCount).to.equal(3);
                 expect(reporter._data).to.have.length(0);
                 server.close(done);
             });
@@ -324,6 +286,80 @@ describe('GoodHttp', () => {
             for (let i = 0; i < 3; ++i) {
                 stream.push({ id: i });
             }
+        });
+    });
+
+    it('it always ignores errors if errorThreshold is null or Infinity', { plan: 1 }, (done) => {
+
+        let hitCount = 0;
+        const server = Http.createServer((req, res) => {
+
+            hitCount++;
+            req.socket.destroy();
+        });
+
+        server.listen(0, '127.0.0.1', () => {
+
+            const stream = internals.readStream();
+            const nullReporter = new GoodHttp(internals.getUri(server), {
+                threshold: 0,
+                errorThreshold: null
+            });
+
+            const infinityReporter = new GoodHttp(internals.getUri(server), {
+                threshold: 0,
+                errorThreshold: Infinity
+            });
+
+            nullReporter.on('error', () => {
+
+                Code.fail('Request errors should not be reported');
+            });
+
+            infinityReporter.on('error', () => {
+
+                Code.fail('Request errors should not be reported');
+            });
+
+            nullReporter.on('finish', () => {
+
+                expect(hitCount).to.equal(2);
+                server.close(done);
+            });
+
+            stream.pipe(nullReporter);
+            stream.pipe(infinityReporter);
+
+            stream.push({ id: 1 });
+            stream.push(null);
+        });
+    });
+
+    it('reporters errors by default', { plan: 1 }, (done) => {
+
+        let hitCount = 0;
+        const server = Http.createServer((req, res) => {
+
+            hitCount++;
+            req.socket.destroy();
+        });
+
+        server.listen(0, '127.0.0.1', () => {
+
+            const stream = internals.readStream();
+            const reporter = new GoodHttp(internals.getUri(server), {
+                threshold: 0
+            });
+
+            reporter.on('error', () => {
+
+                expect(hitCount).to.equal(1);
+                server.close(done);
+            });
+
+            stream.pipe(reporter);
+            stream.push({ id: 1 });
+            stream.push(null);
         });
     });
 });

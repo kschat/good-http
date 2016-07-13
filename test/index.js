@@ -289,47 +289,51 @@ describe('GoodHttp', () => {
         });
     });
 
-    it('it always ignores errors if errorThreshold is null or Infinity', { plan: 1 }, (done) => {
+    it('it always ignores errors and clears logs if errorThreshold is null', { plan: 5 }, (done) => {
 
         let hitCount = 0;
         const server = Http.createServer((req, res) => {
 
+            let data = '';
             hitCount++;
-            req.socket.destroy();
+
+            req.on('data', (chunk) => {
+
+                data += chunk;
+            });
+            req.on('end', () => {
+
+                const payload = JSON.parse(data);
+                const events = payload.events;
+
+                expect(events).to.have.length(1);
+                expect(events[0].id).to.equal(hitCount - 1);
+                req.socket.destroy();
+            });
         });
 
         server.listen(0, '127.0.0.1', () => {
 
             const stream = internals.readStream();
-            const nullReporter = new GoodHttp(internals.getUri(server), {
+            const reporter = new GoodHttp(internals.getUri(server), {
                 threshold: 0,
                 errorThreshold: null
             });
 
-            const infinityReporter = new GoodHttp(internals.getUri(server), {
-                threshold: 0,
-                errorThreshold: Infinity
-            });
-
-            nullReporter.on('error', () => {
+            reporter.on('error', () => {
 
                 Code.fail('Request errors should not be reported');
             });
 
-            infinityReporter.on('error', () => {
-
-                Code.fail('Request errors should not be reported');
-            });
-
-            nullReporter.on('finish', () => {
+            reporter.on('finish', () => {
 
                 expect(hitCount).to.equal(2);
                 server.close(done);
             });
 
-            stream.pipe(nullReporter);
-            stream.pipe(infinityReporter);
+            stream.pipe(reporter);
 
+            stream.push({ id: 0 });
             stream.push({ id: 1 });
             stream.push(null);
         });
@@ -358,7 +362,7 @@ describe('GoodHttp', () => {
             });
 
             stream.pipe(reporter);
-            stream.push({ id: 1 });
+            stream.push({ id: 0 });
             stream.push(null);
         });
     });

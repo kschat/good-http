@@ -243,9 +243,10 @@ describe('GoodHttp', () => {
         });
     });
 
-    it('doesn\'t clear data on error until errorThreshold is reached', { plan: 8 }, (done) => {
+    it('doesn\'t clear data on error until errorThreshold is reached', { plan: 15 }, (done) => {
 
         let hitCount = 0;
+        let errorCallCount = 0;
         const server = Http.createServer((req, res) => {
 
             let data = '';
@@ -260,8 +261,13 @@ describe('GoodHttp', () => {
                 const payload = JSON.parse(data);
                 const events = payload.events;
 
+                expect(errorCallCount).to.equal(0);
                 expect(events).to.have.length(hitCount);
-                expect(events[hitCount - 1].id).to.equal(hitCount - 1);
+
+                for (let i = 0; i < hitCount; ++i) {
+                    expect(events[i].id).to.equal(i);
+                }
+
                 req.socket.destroy();
             });
         });
@@ -276,8 +282,10 @@ describe('GoodHttp', () => {
 
             reporter.on('error', () => {
 
+                errorCallCount++;
                 expect(hitCount).to.equal(3);
                 expect(reporter._data).to.have.length(0);
+                expect(errorCallCount).to.equal(1);
                 server.close(done);
             });
 
